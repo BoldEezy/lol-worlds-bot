@@ -79,33 +79,47 @@ const queries = {
     return db.prepare('SELECT * FROM matches WHERE match_id = ?').get(matchId);
   },
 
-  getUpcomingMatches(limit = 10) {
+  getUpcomingMatches(limit = 10, includeTbd = false) {
     const db = getDb();
+    const tbdFilter = includeTbd
+      ? ''
+      : "AND team1_code != 'TBD' AND team2_code != 'TBD' AND team1_name != 'TBD' AND team2_name != 'TBD'";
     return db.prepare(`
       SELECT * FROM matches
-      WHERE state = 'unstarted' AND datetime(start_time) > datetime('now', '-2 hours')
+      WHERE state = 'unstarted'
+        AND datetime(start_time) > datetime('now', '-2 hours')
+        ${tbdFilter}
       ORDER BY datetime(start_time) ASC
       LIMIT ?
     `).all(limit);
   },
 
-  getMatchesForDate(targetDateIso) {
+  getMatchesForDate(targetDateIso, includeTbd = false) {
     const db = getDb();
-    // Match date string YYYY-MM-DD
     const datePrefix = targetDateIso.substring(0, 10);
+    const tbdFilter = includeTbd
+      ? ''
+      : "AND team1_code != 'TBD' AND team2_code != 'TBD' AND team1_name != 'TBD' AND team2_name != 'TBD'";
     return db.prepare(`
       SELECT * FROM matches
       WHERE start_time LIKE ?
+        ${tbdFilter}
       ORDER BY datetime(start_time) ASC
     `).all(`${datePrefix}%`);
   },
 
-  getNextMatchDayMatches() {
+  getNextMatchDayMatches(includeTbd = false) {
     const db = getDb();
-    // Find the next upcoming unstarted match and grab all matches on that same date
+    const tbdFilter = includeTbd
+      ? ''
+      : "AND team1_code != 'TBD' AND team2_code != 'TBD' AND team1_name != 'TBD' AND team2_name != 'TBD'";
+
+    // Find the next upcoming unstarted match with confirmed teams
     const nextMatch = db.prepare(`
       SELECT start_time FROM matches
-      WHERE state != 'completed' AND datetime(start_time) >= datetime('now', '-2 hours')
+      WHERE state != 'completed'
+        AND datetime(start_time) >= datetime('now', '-2 hours')
+        ${tbdFilter}
       ORDER BY datetime(start_time) ASC
       LIMIT 1
     `).get();
@@ -115,6 +129,7 @@ const queries = {
     return db.prepare(`
       SELECT * FROM matches
       WHERE start_time LIKE ?
+        ${tbdFilter}
       ORDER BY datetime(start_time) ASC
     `).all(`${datePrefix}%`);
   },

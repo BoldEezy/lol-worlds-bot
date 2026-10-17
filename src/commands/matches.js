@@ -23,19 +23,24 @@ module.exports = {
 
     if (filter === 'today') {
       const todayIso = new Date().toISOString();
-      let matches = queries.getMatchesForDate(todayIso);
+      let matches = queries.getMatchesForDate(todayIso, false);
       let titleSuffix = 'Today';
 
       if (matches.length === 0) {
-        matches = queries.getNextMatchDayMatches();
+        matches = queries.getNextMatchDayMatches(false);
         if (matches.length > 0) {
-          titleSuffix = `Next Match Day (${matches[0].start_time.substring(0, 10)})`;
+          titleSuffix = `Next Confirmed Match Day (${matches[0].start_time.substring(0, 10)})`;
         }
       }
 
       embed.setTitle(`📅 Worlds 2026 Series • ${titleSuffix}`);
       if (matches.length === 0) {
-        embed.setDescription('No matches scheduled for today or upcoming match day.');
+        embed.setDescription(
+          '⏳ **Awaiting Swiss Stage Draw**\n' +
+          'All upcoming Swiss Stage matches currently have **TBD** teams (matches with TBD cannot be predicted yet).\n' +
+          'As soon as teams are confirmed in the official draw, they will appear here!\n\n' +
+          '💡 *Tip: Admins can test predictions anytime using `/simulatematch create`.*'
+        );
       } else {
         matches.forEach((m, idx) => {
           const unix = Math.floor(new Date(m.start_time).getTime() / 1000);
@@ -58,7 +63,7 @@ module.exports = {
 
       embed.setTitle('🏁 Worlds 2026 • Recent Match Results');
       if (results.length === 0) {
-        embed.setDescription('No completed matches recorded yet.');
+        embed.setDescription('No completed matches recorded yet for Worlds 2026 Swiss Stage.');
       } else {
         results.forEach((m, idx) => {
           const score = `${m.team1_code} ${m.team1_score} - ${m.team2_score} ${m.team2_code}`;
@@ -70,11 +75,16 @@ module.exports = {
         });
       }
     } else {
-      // Upcoming
-      const matches = queries.getUpcomingMatches(10);
+      // Upcoming (excluding TBD by default)
+      const matches = queries.getUpcomingMatches(10, false);
       embed.setTitle('⚔️ Worlds 2026 • Upcoming Series');
       if (matches.length === 0) {
-        embed.setDescription('No upcoming matches found in schedule.');
+        embed.setDescription(
+          '⏳ **Awaiting Swiss Stage Draw**\n' +
+          'All upcoming Swiss Stage matches currently have **TBD** teams (matches with TBD cannot be predicted yet).\n' +
+          'As soon as teams are confirmed in the official draw, they will appear here with live prediction buttons!\n\n' +
+          '💡 *Tip: Admins can test predictions anytime using `/simulatematch create`.*'
+        );
       } else {
         matches.forEach((m, idx) => {
           const unix = Math.floor(new Date(m.start_time).getTime() / 1000);

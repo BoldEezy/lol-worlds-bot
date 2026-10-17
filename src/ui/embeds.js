@@ -35,8 +35,10 @@ module.exports = {
 
     if (!matches || matches.length === 0) {
       embed.addFields({
-        name: 'No Series Scheduled',
-        value: 'There are no series scheduled for this date. Check `/matches` for upcoming tournament stages!'
+        name: '⏳ Awaiting Confirmed Matchups',
+        value: 'Upcoming Swiss Stage series are currently pending the official draw (TBD matchups are hidden).\n' +
+          'As soon as teams are confirmed, prediction cards will unlock here automatically!\n\n' +
+          '💡 *Tip: Admins can create a mock series anytime using `/simulatematch create` to test predictions.*'
       });
       return embed;
     }

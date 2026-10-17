@@ -46,11 +46,11 @@ module.exports = {
       });
     }
 
-    // No match ID provided: show list of upcoming matches to choose from
-    const upcoming = queries.getUpcomingMatches(15);
+    // No match ID provided: show list of confirmed upcoming matches (excluding TBD)
+    const upcoming = queries.getUpcomingMatches(15, false);
     if (upcoming.length === 0) {
       return interaction.reply({
-        content: '📅 There are currently no upcoming matches open for prediction. Check `/matches` for tournament schedule!',
+        content: '⏳ **Awaiting Swiss Stage Draw**\nThere are currently no confirmed matchups open for prediction because upcoming Swiss Stage series still have **TBD** teams.\nAs soon as the official draw confirms the teams, prediction pickers will open here automatically!\n\n💡 *Tip: Admins can create a test matchup anytime using `/simulatematch create`.*',
         ephemeral: true
       });
     }

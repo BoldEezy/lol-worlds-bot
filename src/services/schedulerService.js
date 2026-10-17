@@ -65,20 +65,21 @@ class SchedulerService {
       await lolEsportsService.syncMatchesToDatabase(true);
 
       const todayIso = new Date().toISOString();
-      let matches = queries.getMatchesForDate(todayIso);
+      let matches = queries.getMatchesForDate(todayIso, false);
 
-      // If no matches today, grab the next available match day series
+      // If no matches today, grab the next available confirmed match day series (no TBD)
       let dateLabel = 'Today';
       if (matches.length === 0) {
-        matches = queries.getNextMatchDayMatches();
+        matches = queries.getNextMatchDayMatches(false);
         if (matches.length > 0) {
           dateLabel = `Next Match Day: ${matches[0].start_time.substring(0, 10)}`;
         }
       }
 
-      if (matches.length === 0) {
-        console.log('[SchedulerService] No matches found for daily announcement.');
-        return { success: false, reason: 'No upcoming matches found in schedule.' };
+      // If scheduled cron runs and no confirmed matches exist, don't spam
+      if (matches.length === 0 && !targetGuildId) {
+        console.log('[SchedulerService] No confirmed matches found for daily prompt (TBD matches ignored).');
+        return { success: false, reason: 'No confirmed upcoming matches found in schedule.' };
       }
 
       const promptEmbed = embeds.createDailyPromptEmbed(matches, dateLabel);

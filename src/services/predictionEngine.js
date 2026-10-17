@@ -116,6 +116,16 @@ class PredictionEngine {
    */
   isMatchOpenForPrediction(match) {
     if (!match) return { isOpen: false, reason: 'Match does not exist.' };
+
+    // Disallow predictions if either team is TBD
+    const t1Code = (match.team1_code || '').trim().toUpperCase();
+    const t2Code = (match.team2_code || '').trim().toUpperCase();
+    const t1Name = (match.team1_name || '').trim().toUpperCase();
+    const t2Name = (match.team2_name || '').trim().toUpperCase();
+    if (t1Code === 'TBD' || t2Code === 'TBD' || t1Name === 'TBD' || t2Name === 'TBD' || !t1Code || !t2Code) {
+      return { isOpen: false, reason: 'Teams for this series are still To Be Determined (TBD). Predictions will open once teams are confirmed in the official draw!' };
+    }
+
     if (match.state === 'completed') return { isOpen: false, reason: 'Match is already completed.' };
     if (match.state === 'inProgress') return { isOpen: false, reason: 'Match is already in progress and locked.' };
 
