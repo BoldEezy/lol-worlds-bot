@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment variables (NEVER COMMIT SENSITIVE KEYS)
+.env
+.env.local
+
+# SQLite Database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Logs & Debug
+logs
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
