@@ -11,9 +11,10 @@ module.exports = {
   LOL_ESPORTS_API_KEY: process.env.LOL_ESPORTS_API_KEY || '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z',
   WORLDS_LEAGUE_ID: process.env.WORLDS_LEAGUE_ID || '98767975604431411', // Worlds official leagueId
 
-  // Scheduler Timings
+  // Scheduler Timings (8:00 AM CET every day)
   RESULT_POLL_INTERVAL_MINUTES: parseInt(process.env.RESULT_POLL_INTERVAL_MINUTES || '5', 10),
-  DAILY_PROMPT_CRON: process.env.DAILY_PROMPT_CRON || '0 9 * * *', // Every day at 09:00 UTC
+  DAILY_PROMPT_CRON: process.env.DAILY_PROMPT_CRON || '0 8 * * *', // 08:00 AM CET
+  TIMEZONE: process.env.TIMEZONE || 'Europe/Paris', // CET / CEST
   CACHE_TTL_SECONDS: parseInt(process.env.CACHE_TTL_SECONDS || '120', 10),
 
   // Database path

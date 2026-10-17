@@ -108,6 +108,24 @@ const queries = {
     `).all(`${datePrefix}%`);
   },
 
+  getMatchesForDayCET(cetDateStr, includeTbd = false) {
+    const db = getDb();
+    const tbdFilter = includeTbd
+      ? ''
+      : "AND team1_code != 'TBD' AND team2_code != 'TBD' AND team1_name != 'TBD' AND team2_name != 'TBD'";
+    const candidates = db.prepare(`
+      SELECT * FROM matches
+      WHERE state != 'completed'
+        ${tbdFilter}
+      ORDER BY datetime(start_time) ASC
+    `).all();
+
+    return candidates.filter(m => {
+      const matchCetDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(m.start_time));
+      return matchCetDate === cetDateStr;
+    });
+  },
+
   getNextMatchDayMatches(includeTbd = false) {
     const db = getDb();
     const tbdFilter = includeTbd

@@ -25,15 +25,15 @@ class SchedulerService {
 
     console.log('[SchedulerService] Starting background services...');
 
-    // 1. Setup daily schedule announcement cron
+    // 1. Daily announcement cron at 08:00 AM CET (Europe/Paris handles CET/CEST auto-switch)
     this.cronTask = cron.schedule(config.DAILY_PROMPT_CRON, async () => {
-      console.log('[SchedulerService] Triggering scheduled daily prompt...');
+      console.log('[SchedulerService] 08:00 CET — checking for Worlds matches to announce...');
       await this.postDailyAnnouncement(this.client);
     }, {
-      timezone: 'UTC'
+      timezone: config.TIMEZONE // 'Europe/Paris' = CET in winter, CEST in summer
     });
 
-    // 2. Setup periodic match sync & settlement polling
+    // 2. Periodic match sync & settlement polling
     const pollMs = config.RESULT_POLL_INTERVAL_MINUTES * 60 * 1000;
     this.pollInterval = setInterval(async () => {
       try {
@@ -43,7 +43,7 @@ class SchedulerService {
       }
     }, pollMs);
 
-    console.log(`[SchedulerService] Daily cron active (${config.DAILY_PROMPT_CRON} UTC). Result poller running every ${config.RESULT_POLL_INTERVAL_MINUTES}m.`);
+    console.log(`[SchedulerService] Daily cron set to ${config.DAILY_PROMPT_CRON} ${config.TIMEZONE}. Result poller every ${config.RESULT_POLL_INTERVAL_MINUTES}m.`);
   }
 
   stop() {
@@ -64,22 +64,24 @@ class SchedulerService {
       // Sync latest schedule from API first
       await lolEsportsService.syncMatchesToDatabase(true);
 
-      const todayIso = new Date().toISOString();
-      let matches = queries.getMatchesForDate(todayIso, false);
+      // Get today's date in CET so matches at e.g. 17:00 UTC appear on the correct local date
+      const todayCet = new Intl.DateTimeFormat('en-CA', { timeZone: config.TIMEZONE }).format(new Date());
+      let matches = queries.getMatchesForDayCET(todayCet, false);
+      let dateLabel = `Today (${todayCet})`;
 
-      // If no matches today, grab the next available confirmed match day series (no TBD)
-      let dateLabel = 'Today';
-      if (matches.length === 0) {
-        matches = queries.getNextMatchDayMatches(false);
-        if (matches.length > 0) {
-          dateLabel = `Next Match Day: ${matches[0].start_time.substring(0, 10)}`;
-        }
+      // If auto-scheduled and no confirmed matches today in CET → skip silently, don't post anything
+      if (matches.length === 0 && !targetGuildId) {
+        console.log(`[SchedulerService] No confirmed Worlds matches on ${todayCet} CET — skipping daily announcement.`);
+        return { success: false, reason: `No confirmed matches on ${todayCet} CET.` };
       }
 
-      // If scheduled cron runs and no confirmed matches exist, don't spam
-      if (matches.length === 0 && !targetGuildId) {
-        console.log('[SchedulerService] No confirmed matches found for daily prompt (TBD matches ignored).');
-        return { success: false, reason: 'No confirmed upcoming matches found in schedule.' };
+      // If manually triggered with /postdaily and no matches today, fall back to next confirmed match day
+      if (matches.length === 0 && targetGuildId) {
+        matches = queries.getNextMatchDayMatches(false);
+        if (matches.length > 0) {
+          const nextCet = new Intl.DateTimeFormat('en-CA', { timeZone: config.TIMEZONE }).format(new Date(matches[0].start_time));
+          dateLabel = `Next Match Day: ${nextCet}`;
+        }
       }
 
       const promptEmbed = embeds.createDailyPromptEmbed(matches, dateLabel);
