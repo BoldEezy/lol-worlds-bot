@@ -1,13 +1,26 @@
-const { DatabaseSync } = require('node:sqlite');
-const config = require('../config');
 const path = require('path');
+const config = require('../config');
+
+// Universal SQLite Loader (supports better-sqlite3 across Node 18, 20, 22, 24+ with fallback to node:sqlite)
+let SqliteConstructor = null;
+try {
+  SqliteConstructor = require('better-sqlite3');
+} catch (e) {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    SqliteConstructor = DatabaseSync;
+  } catch (err) {
+    console.error('Failed to load SQLite module:', err);
+    throw new Error('SQLite library not found. Please ensure better-sqlite3 is installed.');
+  }
+}
 
 let dbInstance = null;
 
 function getDb() {
   if (!dbInstance) {
     const dbPath = path.resolve(config.DB_PATH);
-    dbInstance = new DatabaseSync(dbPath);
+    dbInstance = new SqliteConstructor(dbPath);
 
     // Initialize Schema
     dbInstance.exec(`
