@@ -170,8 +170,11 @@ class SchedulerService {
         const report = predictionEngine.settleMatch(m.match_id);
         if (!report.alreadySettled) {
           settledCount++;
-          // Broadcast settlement embed to all configured server channels
-          await this.broadcastMatchResult(client, report);
+          // Only broadcast settlement if users actually submitted predictions for this match!
+          // This prevents posting results for matches nobody in the server predicted.
+          if (report.totalPredictions > 0) {
+            await this.broadcastMatchResult(client, report);
+          }
         }
       } catch (err) {
         console.error(`[SchedulerService] Error settling match ${m.match_id}:`, err.message);

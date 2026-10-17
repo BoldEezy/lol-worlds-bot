@@ -42,6 +42,27 @@ class LolEsportsService {
           continue;
         }
 
+        // Filter out past years, MSI, and pre-Swiss stages (Play-Ins)
+        if (!event.startTime || !event.startTime.startsWith('2026')) {
+          continue;
+        }
+
+        const blockLower = (event.blockName || '').toLowerCase();
+        if (
+          blockLower.includes('play-in') ||
+          blockLower.includes('playin') ||
+          blockLower.includes('msi') ||
+          blockLower.includes('qualifier') ||
+          blockLower.includes('wqs')
+        ) {
+          continue;
+        }
+
+        // Swiss stage begins on 2026-10-23
+        if (new Date(event.startTime).getTime() < new Date('2026-10-23T00:00:00Z').getTime()) {
+          continue;
+        }
+
         const m = event.match;
         const t1 = m.teams[0];
         const t2 = m.teams[1];
