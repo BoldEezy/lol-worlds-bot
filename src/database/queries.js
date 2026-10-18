@@ -188,6 +188,36 @@ const queries = {
     db.prepare('INSERT OR IGNORE INTO matchday_summaries (day_key) VALUES (?)').run(dayKey);
   },
 
+  // --- MATCH NOTIFICATIONS (lock reminders, crowd picks) ---
+  getMatchesNearStart() {
+    const db = getDb();
+    return db.prepare(`
+      SELECT * FROM matches
+      WHERE state != 'completed'
+        AND team1_code != 'TBD' AND team2_code != 'TBD'
+        AND datetime(start_time) BETWEEN datetime('now', '-60 minutes') AND datetime('now', '+30 minutes')
+      ORDER BY datetime(start_time) ASC
+    `).all();
+  },
+
+  wasNotified(matchId, kind) {
+    const db = getDb();
+    return !!db.prepare('SELECT 1 FROM match_notifications WHERE match_id = ? AND kind = ?').get(matchId, kind);
+  },
+
+  markNotified(matchId, kind) {
+    const db = getDb();
+    db.prepare('INSERT OR IGNORE INTO match_notifications (match_id, kind) VALUES (?, ?)').run(matchId, kind);
+  },
+
+  getUsersWithoutPrediction(matchId) {
+    const db = getDb();
+    return db.prepare(`
+      SELECT user_id, username FROM users
+      WHERE user_id NOT IN (SELECT user_id FROM predictions WHERE match_id = ?)
+    `).all(matchId);
+  },
+
   // --- PREDICTIONS ---
   savePrediction(userId, matchId, predictedWinnerCode, predictedTeam1Score, predictedTeam2Score) {
     const db = getDb();

@@ -182,6 +182,29 @@ module.exports = {
   },
 
   /**
+   * Locked-in picks shown when a series starts
+   */
+  createCrowdPickEmbed(match, predictions) {
+    const groups = {};
+    predictions.forEach(p => {
+      (groups[p.predicted_winner_code] = groups[p.predicted_winner_code] || []).push(p);
+    });
+
+    const fields = Object.entries(groups)
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([code, list]) => ({
+        name: `${code} • ${list.length} pick${list.length === 1 ? '' : 's'}`,
+        value: list.map(p => `${p.username} (${p.predicted_team1_score}-${p.predicted_team2_score})`).join('\n').substring(0, 1024)
+      }));
+
+    return new EmbedBuilder()
+      .setColor(config.COLORS.PURPLE_MYTHIC)
+      .setTitle(`🔒 Picks Locked: ${match.team1_code} vs ${match.team2_code} (Bo${match.best_of})`)
+      .setDescription(`Here is what everyone predicted (${match.team1_code} - ${match.team2_code} score):`)
+      .addFields(fields);
+  },
+
+  /**
    * Compact end-of-matchday embed: one line per series plus the current leaderboard
    */
   createMatchdaySummaryEmbeds(matches, leaders, dayKey) {

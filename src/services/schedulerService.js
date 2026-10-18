@@ -11,6 +11,7 @@ class SchedulerService {
     this.client = null;
     this.cronTask = null;
     this.pollInterval = null;
+    this.timerInterval = null;
     this.isRunning = false;
   }
 
@@ -43,12 +44,20 @@ class SchedulerService {
       }
     }, pollMs);
 
+    // 3. Per-minute timers: lock reminders (30 min before) and crowd picks (at start)
+    this.timerInterval = setInterval(() => {
+      this.checkMatchTimers(this.client).catch(err => {
+        console.error('[SchedulerService] Error during match timer check:', err.message);
+      });
+    }, 60 * 1000);
+
     console.log(`[SchedulerService] Daily cron set to ${config.DAILY_PROMPT_CRON} ${config.TIMEZONE}. Result poller every ${config.RESULT_POLL_INTERVAL_MINUTES}m.`);
   }
 
   stop() {
     if (this.cronTask) this.cronTask.stop();
     if (this.pollInterval) clearInterval(this.pollInterval);
+    if (this.timerInterval) clearInterval(this.timerInterval);
     this.isRunning = false;
     console.log('[SchedulerService] Stopped background services.');
   }
@@ -187,6 +196,58 @@ class SchedulerService {
 
     await this.postMatchdaySummary(client);
     return { settledCount };
+  }
+
+  /**
+   * Sends a payload to every configured guild channel
+   */
+  async sendToAllChannels(client, payload) {
+    for (const settings of queries.getAllGuildSettings()) {
+      try {
+        const channel = await client.channels.fetch(settings.channel_id);
+        if (channel && channel.isTextBased()) await channel.send(payload);
+      } catch (err) {
+        console.error(`[SchedulerService] Failed to post to ${settings.channel_id}:`, err.message);
+      }
+    }
+  }
+
+  /**
+   * Posts a 30-minute lock reminder (pinging users without a pick) and,
+   * once a series has started, reveals everyone's locked-in picks
+   */
+  async checkMatchTimers(client) {
+    if (!client) return;
+    const now = Date.now();
+    const nearby = queries.getMatchesNearStart();
+
+    // Lock reminders: one message per tick covering all series about to start
+    const due = nearby.filter(m => new Date(m.start_time).getTime() > now && !queries.wasNotified(m.match_id, 'reminder'));
+    if (due.length > 0) {
+      const missing = new Map();
+      due.forEach(m => queries.getUsersWithoutPrediction(m.match_id).forEach(u => missing.set(u.user_id, u)));
+      due.forEach(m => queries.markNotified(m.match_id, 'reminder'));
+
+      if (missing.size > 0) {
+        const mentions = [...missing.keys()].slice(0, 40).map(id => `<@${id}>`).join(' ');
+        const list = due.map(m => `• **${m.team1_code} vs ${m.team2_code}** (Bo${m.best_of}) — locks <t:${Math.floor(new Date(m.start_time).getTime() / 1000)}:R>`).join('\n');
+        await this.sendToAllChannels(client, {
+          content: `⏰ ${mentions}
+Predictions lock soon and you haven't picked yet:
+${list}`,
+          components: [components.createDailyPromptActionRow()]
+        });
+      }
+    }
+
+    // Crowd picks: reveal once the series has started
+    for (const m of nearby) {
+      if (new Date(m.start_time).getTime() > now || queries.wasNotified(m.match_id, 'crowd')) continue;
+      queries.markNotified(m.match_id, 'crowd');
+      const predictions = queries.getPredictionsForMatch(m.match_id);
+      if (predictions.length === 0) continue;
+      await this.sendToAllChannels(client, { embeds: [embeds.createCrowdPickEmbed(m, predictions)] });
+    }
   }
 
   /**

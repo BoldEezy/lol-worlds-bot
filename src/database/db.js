@@ -87,6 +87,13 @@ function getDb() {
         posted_at TEXT DEFAULT (datetime('now'))
       );
 
+      CREATE TABLE IF NOT EXISTS match_notifications (
+        match_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        sent_at TEXT DEFAULT (datetime('now')),
+        PRIMARY KEY (match_id, kind)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_predictions_match_id ON predictions(match_id);
       CREATE INDEX IF NOT EXISTS idx_predictions_user_id ON predictions(user_id);
       CREATE INDEX IF NOT EXISTS idx_matches_start_time ON matches(start_time);
