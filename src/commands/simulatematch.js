@@ -24,6 +24,7 @@ module.exports = {
         )
         .addStringOption(opt => opt.setName('team1').setDescription('Team 1 Name/Code (default: T1)').setRequired(false))
         .addStringOption(opt => opt.setName('team2').setDescription('Team 2 Name/Code (default: GEN)').setRequired(false))
+        .addIntegerOption(opt => opt.setName('starts_in').setDescription('Minutes until the series starts (default: 120)').setMinValue(1).setMaxValue(1440).setRequired(false))
     )
     .addSubcommand(sub =>
       sub.setName('complete')
@@ -42,8 +43,9 @@ module.exports = {
       const team2 = interaction.options.getString('team2') || 'GEN';
       const mockId = `mock_${Date.now()}`;
 
-      // Start time 2 hours from now so predictions are open
-      const startTime = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+      // Default start 2 hours from now; use starts_in (minutes) to test lock reminders / pick reveals
+      const startsIn = interaction.options.getInteger('starts_in') || 120;
+      const startTime = new Date(Date.now() + startsIn * 60 * 1000).toISOString();
 
       const created = lolEsportsService.createMockMatch({
         matchId: mockId,
