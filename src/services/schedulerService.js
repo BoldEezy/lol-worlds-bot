@@ -104,7 +104,7 @@ class SchedulerService {
               embeds: [promptEmbed],
               components: [actionRow]
             });
-            queries.updateLastPromptDate(settings.guild_id, todayIso.substring(0, 10));
+            queries.updateLastPromptDate(settings.guild_id, todayCet);
             postedCount++;
           }
         } catch (err) {
@@ -162,6 +162,7 @@ class SchedulerService {
     // 2. Fetch completed but unsettled matches
     const unsettled = queries.getUnsettledCompletedMatches();
     if (unsettled.length === 0) {
+      await this.postMatchdaySummary(client);
       return { settledCount: 0 };
     }
 
@@ -184,7 +185,48 @@ class SchedulerService {
       }
     }
 
+    await this.postMatchdaySummary(client);
     return { settledCount };
+  }
+
+  /**
+   * Once every series of the current matchday is completed and settled, posts a compact
+   * results list plus the prediction leaderboard (once per matchday)
+   */
+  async postMatchdaySummary(client) {
+    if (!client) return;
+    try {
+      const dayKey = queries.getMatchdayKey(new Date().toISOString());
+      if (queries.isMatchdaySummaryPosted(dayKey)) return;
+
+      const dayMatches = queries.getMatchesForMatchday(dayKey);
+      if (dayMatches.length === 0) return;
+
+      // Stale never-played placeholders (>24h past start) must not block the summary
+      const staleMs = Date.now() - 24 * 3600 * 1000;
+      const relevant = dayMatches.filter(m => m.state === 'completed' || new Date(m.start_time).getTime() > staleMs);
+      const finished = relevant.filter(m => m.state === 'completed');
+      if (finished.length === 0 || finished.length !== relevant.length || finished.some(m => m.settled !== 1)) return;
+
+      const leaders = queries.getLeaderboard(15);
+      const summaryEmbeds = embeds.createMatchdaySummaryEmbeds(finished, leaders, dayKey);
+
+      for (const settings of queries.getAllGuildSettings()) {
+        try {
+          const channel = await client.channels.fetch(settings.channel_id);
+          if (channel && channel.isTextBased()) {
+            await channel.send({ embeds: summaryEmbeds });
+          }
+        } catch (err) {
+          console.error(`[SchedulerService] Failed to post matchday summary to ${settings.channel_id}:`, err.message);
+        }
+      }
+
+      queries.markMatchdaySummaryPosted(dayKey);
+      console.log(`[SchedulerService] Posted matchday summary for ${dayKey} (${finished.length} series).`);
+    } catch (err) {
+      console.error('[SchedulerService] Error posting matchday summary:', err.message);
+    }
   }
 
   /**

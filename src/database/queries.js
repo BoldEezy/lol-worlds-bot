@@ -165,6 +165,29 @@ const queries = {
     db.prepare('UPDATE matches SET settled = 1, updated_at = datetime(\'now\') WHERE match_id = ?').run(matchId);
   },
 
+  // --- MATCHDAY SUMMARIES ---
+  // A matchday spans CET midnight (e.g. 00:00Z games), so shift by 6h to group by esports day.
+  getMatchdayKey(isoString) {
+    return new Date(new Date(isoString).getTime() - 6 * 3600 * 1000).toISOString().substring(0, 10);
+  },
+
+  getMatchesForMatchday(dayKey) {
+    const db = getDb();
+    return db.prepare(`
+      SELECT * FROM matches WHERE is_mock = 0 ORDER BY datetime(start_time) ASC
+    `).all().filter(m => this.getMatchdayKey(m.start_time) === dayKey);
+  },
+
+  isMatchdaySummaryPosted(dayKey) {
+    const db = getDb();
+    return !!db.prepare('SELECT 1 FROM matchday_summaries WHERE day_key = ?').get(dayKey);
+  },
+
+  markMatchdaySummaryPosted(dayKey) {
+    const db = getDb();
+    db.prepare('INSERT OR IGNORE INTO matchday_summaries (day_key) VALUES (?)').run(dayKey);
+  },
+
   // --- PREDICTIONS ---
   savePrediction(userId, matchId, predictedWinnerCode, predictedTeam1Score, predictedTeam2Score) {
     const db = getDb();

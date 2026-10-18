@@ -82,6 +82,11 @@ function getDb() {
         last_prompt_date TEXT
       );
 
+      CREATE TABLE IF NOT EXISTS matchday_summaries (
+        day_key TEXT PRIMARY KEY,
+        posted_at TEXT DEFAULT (datetime('now'))
+      );
+
       CREATE INDEX IF NOT EXISTS idx_predictions_match_id ON predictions(match_id);
       CREATE INDEX IF NOT EXISTS idx_predictions_user_id ON predictions(user_id);
       CREATE INDEX IF NOT EXISTS idx_matches_start_time ON matches(start_time);

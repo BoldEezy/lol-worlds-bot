@@ -42,15 +42,13 @@ class LolEsportsService {
           continue;
         }
 
-        // Filter out past years, MSI, and pre-Swiss stages (Play-Ins)
+        // Filter out past years, MSI, and qualifiers (Play-Ins and later stages are kept)
         if (!event.startTime || !event.startTime.startsWith('2026')) {
           continue;
         }
 
         const blockLower = (event.blockName || '').toLowerCase();
         if (
-          blockLower.includes('play-in') ||
-          blockLower.includes('playin') ||
           blockLower.includes('msi') ||
           blockLower.includes('qualifier') ||
           blockLower.includes('wqs')
@@ -58,8 +56,8 @@ class LolEsportsService {
           continue;
         }
 
-        // Swiss stage begins on 2026-10-23
-        if (new Date(event.startTime).getTime() < new Date('2026-10-23T00:00:00Z').getTime()) {
+        // Worlds 2026 begins with the Play-Ins on 2026-10-15
+        if (new Date(event.startTime).getTime() < new Date('2026-10-15T00:00:00Z').getTime()) {
           continue;
         }
 

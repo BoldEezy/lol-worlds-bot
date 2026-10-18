@@ -73,8 +73,8 @@ module.exports = {
         (match.best_of === 5
           ? `• Right Winner: **3 points**\n• Exact Score Bonus: **+1 point**\n• **Total Possible: 4 points**`
           : match.best_of === 3
-          ? `• Right Winner: **2 points**\n• Exact Score Bonus: **+1 point**\n• **Total Possible: 3 points**`
-          : `• Right Winner: **1 point** (Bo1)`)
+            ? `• Right Winner: **2 points**\n• Exact Score Bonus: **+1 point**\n• **Total Possible: 3 points**`
+            : `• Right Winner: **1 point** (Bo1)`)
       );
 
     if (match.team1_image) {
@@ -182,6 +182,37 @@ module.exports = {
   },
 
   /**
+   * Compact end-of-matchday embed: one line per series plus the current leaderboard
+   */
+  createMatchdaySummaryEmbeds(matches, leaders, dayKey) {
+    const resultLines = matches.map(m => {
+      const t1Won = m.winner_code === m.team1_code;
+      const t1 = t1Won ? `**${m.team1_code}**` : m.team1_code;
+      const t2 = !t1Won ? `**${m.team2_code}**` : m.team2_code;
+      return `${t1} ${m.team1_score}-${m.team2_score} ${t2} · Bo${m.best_of}`;
+    }).join('\n');
+
+    const resultsEmbed = new EmbedBuilder()
+      .setColor(config.COLORS.WORLDS_GOLD)
+      .setTitle(`🏁 Matchday Results • ${dayKey}`)
+      .setDescription(resultLines.substring(0, 4000));
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const boardLines = leaders.length > 0
+      ? leaders.map((u, i) => `${i < 3 ? medals[i] : `\`#${i + 1}\``} **${u.username}** — ${u.total_points} pts (🎯${u.exact_scores} · ✅${u.correct_winners}/${u.total_predictions})`).join('\n')
+      : 'No settled predictions yet.';
+
+    const boardEmbed = new EmbedBuilder()
+      .setColor(config.COLORS.HEXTECH_BLUE)
+      .setTitle('🏆 Prediction Leaderboard')
+      .setDescription(boardLines.substring(0, 4000))
+      .setFooter({ text: 'Worlds 2026 Score Predictions' })
+      .setTimestamp();
+
+    return [resultsEmbed, boardEmbed];
+  },
+
+  /**
    * Global server leaderboard embed
    */
   createLeaderboardEmbed(users, userRank = null, requestedUsername = null) {
@@ -252,8 +283,8 @@ module.exports = {
       .addFields({
         name: '📈 Points Breakdown by Format',
         value: `• **Bo5 Points:** \`${user.bo5_points || 0} pts\`\n` +
-               `• **Bo3 Points:** \`${user.bo3_points || 0} pts\`\n` +
-               `• **Bo1 Points:** \`${user.bo1_points || 0} pts\``,
+          `• **Bo3 Points:** \`${user.bo3_points || 0} pts\`\n` +
+          `• **Bo1 Points:** \`${user.bo1_points || 0} pts\``,
         inline: true
       }, {
         name: '🔔 Preferences',
