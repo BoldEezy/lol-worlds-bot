@@ -99,6 +99,12 @@ function getDb() {
       CREATE INDEX IF NOT EXISTS idx_matches_start_time ON matches(start_time);
       CREATE INDEX IF NOT EXISTS idx_matches_settled ON matches(settled);
     `);
+
+    // Migration: points carried over from before the bot existed
+    const userColumns = dbInstance.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+    if (!userColumns.includes('starting_points')) {
+      dbInstance.exec('ALTER TABLE users ADD COLUMN starting_points INTEGER DEFAULT 0');
+    }
   }
   return dbInstance;
 }

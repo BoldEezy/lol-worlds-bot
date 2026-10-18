@@ -25,6 +25,20 @@ const queries = {
     db.prepare('UPDATE users SET dm_reminders = ?, updated_at = datetime(\'now\') WHERE user_id = ?').run(enabled ? 1 : 0, userId);
   },
 
+  // Replaces the user's carried-over points and shifts total_points by the difference
+  setStartingPoints(userId, points) {
+    const db = getDb();
+    const previous = db.prepare('SELECT starting_points FROM users WHERE user_id = ?').get(userId)?.starting_points || 0;
+    db.prepare(`
+      UPDATE users
+      SET total_points = total_points - ? + ?,
+          starting_points = ?,
+          updated_at = datetime('now')
+      WHERE user_id = ?
+    `).run(previous, points, points, userId);
+    return previous;
+  },
+
   getUsersForReminders() {
     const db = getDb();
     return db.prepare('SELECT user_id, username FROM users WHERE dm_reminders = 1').all();

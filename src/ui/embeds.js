@@ -298,7 +298,8 @@ module.exports = {
       .setTitle(`📊 Summoner Prediction Stats: ${user.username}`)
       .setDescription(
         `**Server Rank:** \`#${rank || 'Unranked'}\`\n` +
-        `**Total Points:** \`${user.total_points} pts\`\n` +
+        `**Total Points:** \`${user.total_points} pts\`` +
+        (user.starting_points ? ` *(incl. ${user.starting_points} carried over)*\n` : '\n') +
         `**Predictions Made:** \`${user.total_predictions}\`\n` +
         `**Winner Winrate:** \`${winRate}%\` (${user.correct_winners}/${user.total_predictions})\n` +
         `**Exact Score Rate:** \`${exactRate}%\` (${user.exact_scores} exact hits)`
@@ -365,7 +366,8 @@ module.exports = {
         `• \`/setchannel #channel [@role]\` — Set the daily prompt & results channel\n` +
         `• \`/postdaily\` — Trigger today's daily match prediction prompt\n` +
         `• \`/checkresults\` — Manually poll API and settle finished matches\n` +
-        `• \`/simulatematch\` — Create a mock series for testing & demoing anytime`
+        `• \`/simulatematch\` — Create a mock series for testing & demoing anytime\n` +
+        `• \`/setstartingscore @user points\` — Set points carried over from before the bot`
       )
       .setFooter({ text: 'LoL Worlds 2026 • May the best analyst win!' });
   }
