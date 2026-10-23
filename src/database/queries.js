@@ -226,7 +226,8 @@ const queries = {
     const db = getDb();
     return db.prepare(`
       SELECT user_id, username FROM users
-      WHERE user_id NOT IN (SELECT user_id FROM predictions WHERE match_id = ?)
+      WHERE user_id IN (SELECT DISTINCT user_id FROM predictions)
+        AND user_id NOT IN (SELECT user_id FROM predictions WHERE match_id = ?)
     `).all(matchId);
   },
 
