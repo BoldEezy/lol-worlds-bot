@@ -134,10 +134,8 @@ const queries = {
       ORDER BY datetime(start_time) ASC
     `).all();
 
-    return candidates.filter(m => {
-      const matchCetDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date(m.start_time));
-      return matchCetDate === cetDateStr;
-    });
+    // Group by matchday (not CET calendar date) so late US matches past midnight CET stay in the same day
+    return candidates.filter(m => this.getMatchdayKey(m.start_time) === cetDateStr);
   },
 
   getNextMatchDayMatches(includeTbd = false) {

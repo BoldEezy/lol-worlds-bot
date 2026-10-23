@@ -75,7 +75,8 @@ class SchedulerService {
 
       // Get today's date in CET so matches at e.g. 17:00 UTC appear on the correct local date
       const todayCet = new Intl.DateTimeFormat('en-CA', { timeZone: config.TIMEZONE }).format(new Date());
-      let matches = queries.getMatchesForDayCET(todayCet, false);
+      // Matchday key shifts by 6h so US evening series after midnight CET are included
+      let matches = queries.getMatchesForDayCET(queries.getMatchdayKey(new Date().toISOString()), false);
       let dateLabel = `Today (${todayCet})`;
 
       // If auto-scheduled and no confirmed matches today in CET → skip silently, don't post anything
