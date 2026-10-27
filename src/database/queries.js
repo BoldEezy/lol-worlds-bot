@@ -331,6 +331,47 @@ const queries = {
     );
   },
 
+  getSettledPredictionsForAudit() {
+    const db = getDb();
+    return db.prepare(`
+      SELECT p.id, p.user_id, u.username, p.predicted_winner_code, p.predicted_team1_score,
+             p.predicted_team2_score, p.points_awarded, p.exact_score_hit,
+             m.best_of, m.winner_code, m.team1_code, m.team2_code, m.team1_score, m.team2_score
+      FROM predictions p
+      JOIN matches m ON m.match_id = p.match_id
+      JOIN users u ON u.user_id = p.user_id
+      WHERE p.settled = 1 AND m.state = 'completed' AND m.is_mock = 0
+    `).all();
+  },
+
+  applyScoreCorrection(predictionId, userId, bestOf, pointsDelta, exactDelta) {
+    const db = getDb();
+    const bo1Pts = bestOf === 1 ? pointsDelta : 0;
+    const bo3Pts = bestOf === 3 ? pointsDelta : 0;
+    const bo5Pts = bestOf === 5 ? pointsDelta : 0;
+
+    db.transaction(() => {
+      db.prepare(`
+        UPDATE predictions
+        SET points_awarded = points_awarded + ?,
+            exact_score_hit = exact_score_hit | ?,
+            updated_at = datetime('now')
+        WHERE id = ?
+      `).run(pointsDelta, exactDelta, predictionId);
+
+      db.prepare(`
+        UPDATE users
+        SET total_points = total_points + ?,
+            exact_scores = exact_scores + ?,
+            bo1_points = bo1_points + ?,
+            bo3_points = bo3_points + ?,
+            bo5_points = bo5_points + ?,
+            updated_at = datetime('now')
+        WHERE user_id = ?
+      `).run(pointsDelta, exactDelta, bo1Pts, bo3Pts, bo5Pts, userId);
+    })();
+  },
+
   // --- LEADERBOARD & STATS ---
   getLeaderboard(limit = 10) {
     const db = getDb();

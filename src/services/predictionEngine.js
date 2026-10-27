@@ -21,7 +21,9 @@ class PredictionEngine {
     const predLow = Math.min(Number(prediction.predicted_team1_score), Number(prediction.predicted_team2_score));
     const actualHigh = Math.max(Number(match.team1_score), Number(match.team2_score));
     const actualLow = Math.min(Number(match.team1_score), Number(match.team2_score));
-    const isExactScore = isWinnerCorrect && predHigh === actualHigh && predLow === actualLow;
+    // Bo1 has no exact-score bonus, so it never counts as an exact score
+    const isExactScore = isWinnerCorrect && (bestOf === 3 || bestOf === 5) &&
+      predHigh === actualHigh && predLow === actualLow;
 
     if (!isWinnerCorrect) {
       return {
@@ -196,6 +198,38 @@ class PredictionEngine {
       totalPredictions: predictions.length,
       userResults
     };
+  }
+
+  /**
+   * Re-scores every settled prediction and awards points that were missed at settlement
+   * time (e.g. an exact-score bonus lost to a swapped team order). Only ever adds points;
+   * predictions that were over-awarded are reported but left untouched.
+   * @returns {{ corrections: Array, overAwarded: Array }}
+   */
+  auditSettledPredictions() {
+    const corrections = [];
+    const overAwarded = [];
+
+    for (const row of queries.getSettledPredictionsForAudit()) {
+      const expected = this.calculateScore(row, row);
+      const pointsDelta = expected.pointsEarned - row.points_awarded;
+      const exactDelta = expected.isExactScore && !row.exact_score_hit ? 1 : 0;
+
+      if (pointsDelta < 0) {
+        overAwarded.push({ ...row, expectedPoints: expected.pointsEarned });
+      } else if (pointsDelta > 0 || exactDelta > 0) {
+        queries.applyScoreCorrection(row.id, row.user_id, row.best_of, pointsDelta, exactDelta);
+        corrections.push({
+          userId: row.user_id,
+          username: row.username,
+          matchLabel: `${row.team1_code} vs ${row.team2_code}`,
+          bestOf: row.best_of,
+          pointsAdded: pointsDelta
+        });
+      }
+    }
+
+    return { corrections, overAwarded };
   }
 }
 

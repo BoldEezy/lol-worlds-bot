@@ -270,6 +270,10 @@ ${list}`,
       const finished = relevant.filter(m => m.state === 'completed');
       if (finished.length === 0 || finished.length !== relevant.length || finished.some(m => m.settled !== 1)) return;
 
+      // End-of-matchday audit: re-score settled picks and award any points missed earlier,
+      // before the leaderboard is built so the summary shows corrected totals
+      await this.runScoreAudit(client);
+
       const leaders = queries.getLeaderboard(15);
       const summaryEmbeds = embeds.createMatchdaySummaryEmbeds(finished, leaders, dayKey);
 
@@ -288,6 +292,26 @@ ${list}`,
       console.log(`[SchedulerService] Posted matchday summary for ${dayKey} (${finished.length} series).`);
     } catch (err) {
       console.error('[SchedulerService] Error posting matchday summary:', err.message);
+    }
+  }
+
+  /**
+   * Audits all settled predictions and announces any points that had to be added
+   */
+  async runScoreAudit(client) {
+    try {
+      const { corrections, overAwarded } = predictionEngine.auditSettledPredictions();
+      overAwarded.forEach(o => console.warn(`[SchedulerService] Audit: ${o.username} has ${o.points_awarded} pts on ${o.team1_code} vs ${o.team2_code} but expected ${o.expectedPoints} (not changed).`));
+      if (corrections.length === 0) return;
+
+      console.log(`[SchedulerService] Score audit awarded ${corrections.length} missing point(s).`);
+      const lines = corrections.map(c => `• **${c.username}** +${c.pointsAdded} pt — ${c.matchLabel} (Bo${c.bestOf})`);
+      await this.sendToAllChannels(client, {
+        content: `🛠️ **Score correction** — points missed at settlement were added after the daily check:\n${lines.join('\n')}`,
+        allowedMentions: { parse: [] }
+      });
+    } catch (err) {
+      console.error('[SchedulerService] Error during score audit:', err.message);
     }
   }
 
