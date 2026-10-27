@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const queries = require('../database/queries');
 const embeds = require('../ui/embeds');
+const schedulerService = require('../services/schedulerService');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,10 +17,15 @@ module.exports = {
 
   async execute(interaction) {
     const limit = interaction.options.getInteger('limit') || 10;
+
+    // Defer first: the audit may post a score correction message before we reply
+    await interaction.deferReply();
+    await schedulerService.runScoreAudit(interaction.client);
+
     const leaders = queries.getLeaderboard(limit);
     const userRank = queries.getUserRank(interaction.user.id);
 
     const embed = embeds.createLeaderboardEmbed(leaders, userRank, interaction.user.username);
-    return interaction.reply({ embeds: [embed] });
+    return interaction.editReply({ embeds: [embed] });
   }
 };
