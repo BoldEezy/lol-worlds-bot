@@ -15,10 +15,13 @@ class PredictionEngine {
 
     const isWinnerCorrect = predictedWinner !== '' && predictedWinner === actualWinner;
 
-    // Check exact score
-    const isExactScore = isWinnerCorrect &&
-      Number(prediction.predicted_team1_score) === Number(match.team1_score) &&
-      Number(prediction.predicted_team2_score) === Number(match.team2_score);
+    // Check exact score by winner/loser game counts, not team slots: the API can swap
+    // team order after predictions open, which would flip team1/team2 scores
+    const predHigh = Math.max(Number(prediction.predicted_team1_score), Number(prediction.predicted_team2_score));
+    const predLow = Math.min(Number(prediction.predicted_team1_score), Number(prediction.predicted_team2_score));
+    const actualHigh = Math.max(Number(match.team1_score), Number(match.team2_score));
+    const actualLow = Math.min(Number(match.team1_score), Number(match.team2_score));
+    const isExactScore = isWinnerCorrect && predHigh === actualHigh && predLow === actualLow;
 
     if (!isWinnerCorrect) {
       return {
